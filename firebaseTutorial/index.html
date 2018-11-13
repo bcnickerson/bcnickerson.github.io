@@ -1,0 +1,214 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>Firebase Tutorial</title>
+  <script src="../../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../elements/codelab.html">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <style is="custom-style">
+    body {
+      font-family: "Roboto",sans-serif;
+      background: var(--google-codelab-background, #F8F9FA);
+    }
+  </style>
+  
+</head>
+<body unresolved class="fullbleed">
+
+  <google-codelab title="Firebase Tutorial"
+                  environment="web"
+                  feedback-link="">
+    
+      <google-codelab-step label="Firebase Cloud Storage" duration="0">
+        <p>This tutorial implements Google&#39;s Firebase cloud storage. It allows the user to upload images that will be stored on the cloud storage. In addition, it also allows the user to click a default button that provides random kitten photos stored in Firebase.</p>
+<p>The goal of this tutorial is to demonstrate uploading files to Firebase and accessing photos from Firebase and displaying to users.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Setup Firebase" duration="0">
+        <ol type="1">
+<li>Login to Google&#39;s Firebase console.</li>
+<li>Click on &#34;+Add a project&#34;<br><img alt="Adding Project" src="img/a38be1dec05d8fde.png"></li>
+<li>Click on &#34;+Add app&#34; at the top of the screen, under your project name. Select the Android icon.<br><img alt="Adding android" src="img/361c85c0fd2a6f27.png"></li>
+<li>Complete the steps and click register app. Then, download the config file and place it in the app/ directory of your application. (Switch to project view).<br><img alt="Config" src="img/f7114cd0c001c95.png"></li>
+<li>You now need to make additions to your BuildGradle files to configure Firebase SDK with your app. This requires you to add code to <em>your project</em> / build.gradle and <em>your project</em> / <em>app module</em> / build.gradle. The code for these can be found by continuing steps of the adding android app.</li>
+<li>After adding the code to the two files, you need to click Sync Now which appears at the top of files. Then, to ensure that your app is configured, run the application. You probably will have to uninstall your app from the emulator and then rerun in order for Firebase to recognize it.</li>
+<li>Finally, you need to enable reads and writes to your application. Go to the storage tab on the left. Click on Rules. Add the following code and click publish:<pre><code>service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write;  
+    }
+  }
+}
+</code></pre>
+Note: It is not a good idea to allow public read and writes as anyone can modify or access your Storage if they can get to it. However, for the simplicity of this tutorial, we will not focus on authentication implementations.Some deprecated packages may cause Grade to raise errors. The following dependencies are currently up-to-date based on Google&#39;s documentation.<pre><code>dependencies {
+    ...
+    implementation &#39;com.google.firebase:firebase-core:16.0.4&#39;
+    implementation &#39;com.google.firebase:firebase-firestore:17.1.2&#39;
+    implementation &#39;com.google.firebase:firebase-auth:16.0.5&#39;
+    implementation &#39;com.google.firebase:firebase-storage:16.0.4&#39;
+    implementation &#39;com.google.firebase:firebase-database:16.0.4&#39;
+}
+</code></pre>
+</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Uploading to Firebase Storage" duration="0">
+        <p>Your app should now be connected to Firebase. Now, we should add an option for users to upload their pictures to the cloud storage.</p>
+<ol type="1">
+<li>First, we need to adjust our UI. Add an ImageView, TextView, and three Buttons.</li>
+<li>Add the following field to your <em>MainActivity.java</em> class.<pre><code>    FirebaseStorage mStorage;
+    StorageReference mStorageRef;
+</code></pre>
+In addition, initialize these field in your onCreate() method.<pre><code>    mStorage = FirebaseStorage.getInstance();
+    mStorageRef = mStorage.getReference();  
+</code></pre>
+</li>
+<li>Now, we are going to focus on two of the Buttons functionality (ignore the third button). The first button is going to allow the user to browse their camera roll for an image. The second button is going to allow the user to upload the file to Firebase. In order to accomplish this, we need to use the onClick event listener.<pre><code>    mButtonChoose.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                browseImages();
+            }
+    });
+        
+    ...
+    
+</code></pre>
+The setOnClickListener sets an event listener on one of our buttons. When the button is clicked, it calls the browseImages() function. You need to create this function which will allow the user to browse images on their camera roll.</li>
+<li>The browseImages() function needs to allow the user to choose a file from their camera roll. When the user chooses the image they want, we want to be able to show the user&#39;s image in the ImageView. Accomplishing this will be similar to Project 2. The whole idea is based around intents. The skeleton of this function will be provided, and you should be able to figure out the rest.<pre><code>   private void browseImages() {
+       ...
+        Intent intent = new Intent(Intent.ACTION_PICK,
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+           
+        startActivityForResult(...); 
+    }
+    
+</code></pre>
+As you can see, we will need to override the startActivityForResult function that handles the result.</li>
+<li>Override the startActivityForResult function. This is where we will handle the picture that the user chose and display it to the ImageView. Similar to the previous step, the skeleton will be given and you should be able to figure out the rest.<pre><code>    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        ...
+            
+        if(requestCode == 1 &amp;&amp; resultCode == Activity.RESULT_OK) {
+            file = data.getData();
+    
+             //Display image using Bitmap 
+             ...
+        }
+    }
+</code></pre>
+</li>
+<li>We also need to add the uploadToFirebase() function. You should have already defined an event listener for the second button.<pre><code> public void uploadImageToFirebase() {
+            
+        ...
+            
+        StorageReference mUserPicsFolder = mStorageRef.child(&#34;UserPics/&#34; + file.getLastPathSegment());
+        mUserPicsFolder.putFile(file); 
+            
+            
+        //Reset ImageView after upload
+        ...
+            
+        //Notify user upload occured 
+        ...
+    
+    }
+    
+</code></pre>
+A storage reference is a reference to a folder that is in Firebase storage. If the reference doesn&#39;t exist, it will create one for you. The file is also the Uri that was used in the startActivityOnResult function. It may be useful to make this a field. The putFile(...) function uploads the file to Firebase. In addition, you should notify the user that the file was uploaded using a TextView.</li>
+<li>Finally, you need to add permissions to your <em>AndroidManifest.xml</em> file. Add the following permissions:<pre><code>    &lt;uses-permission android:name=&#34;android.permission.INTERNET&#34; /&gt;
+    &lt;uses-permission android:name=&#34;android.permission.READ_EXTERNAL_STORAGE&#34;/&gt;
+</code></pre>
+</li>
+<li>Run your app and you should be able to choose an image and upload it to firebase. Log on to your Firebase console, click on your project, and choose Storage on the left hand side. You should  be able to see your uploaded image. *Note: If you don&#39;t see any pictures on camera roll, open camera and take a few.&#34;<br><img alt="Storage" src="img/2a018b96bc39988b.png"></li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Accessing Images from Firebase" duration="0">
+        <p>Now that we can upload files to Firebase, we want to allow the user to access cute kitten pictures that are on the cloud storage. This is the focus of our final button. When the user clicks this button, we will display a picture from our cloud storage.</p>
+<ol type="1">
+<li>First, you need to create a new kittens folder on your cloud storage. Then, upload three (or more) kitten photos to it.</li>
+<li>We will create an event listener similar to the previous projects. Add an onClickGoButton(...) function to the MainActivity.java class.<pre><code> public void onClickGoButton(View v){
+            
+        ...
+            
+        StorageReference gsReference = mStorage.getReferenceFromUrl(&#34;url_to_your_storage&#34;);
+        StorageReference mKittenFolder = gsReference.child(&#34;kittens/&#34; + name_of_random_kitten_pic);
+            
+        mKittenFolder.getBytes(...).addOnSuccessListener(new OnSuccessListener&lt;byte[]&gt;() {
+            @Override
+            public void onSuccess(byte[] bytes) {
+                
+                 //Display image to ImageView
+                
+            }
+    
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                    
+                //Log error and notify user could not get image at this time
+                    
+                    
+            }
+        });
+    
+    }
+</code></pre>
+This is rather complicated which is why there is a bit more to the function skeleton. First, you need to get a storage reference from the url of your Firebase storage. This can be found easily on the Firebase console by clicking the storage tab on the left. Next, you need to get the reference of the location of where your pictures are. This can be done by using the path of (on Firebase) and the child() function. Then, you need to get the bytes of the image. You need to add onSuccess and onFailure listeners because these are asynchronous. If you do not, the ImageView will not display the image when the user clicks the button. Using the onSuccess ensures that unless there was an error, the image won&#39;t be displayed until it has finished downloading. The onFailure is added because it is good practice to handle failures and notify user that an error occured.</li>
+<li>Go to the activity_main.xml file, click on the middle button, go to attributes and add onClickGoButton function to the onClick attribute.</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Summary" duration="0">
+        <p>This tutorial illustrated the two main functionalities of using the Firebase Cloud Storage: uploading and downloading from cloud storage. There are many more aspects that Firebase offers and you can visit <a href="https://firebase.google.com/" target="_blank">link</a>.</p>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    ga('create', 'UA-49880327-14', 'auto');
+
+    (function() {
+      var gaCodelab = '';
+      if (gaCodelab) {
+        ga('create', gaCodelab, 'auto', {name: 'codelab'});
+      }
+
+      var gaView;
+      var parts = location.search.substring(1).split('&');
+      for (var i = 0; i < parts.length; i++) {
+        var param = parts[i].split('=');
+        if (param[0] === 'viewga') {
+          gaView = param[1];
+          break;
+        }
+      }
+      if (gaView && gaView !== gaCodelab) {
+        ga('create', gaView, 'auto', {name: 'view'});
+      }
+    })();
+  </script>
+
+</body>
+</html>

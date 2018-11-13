@@ -1,0 +1,22 @@
+{
+  "environment": "web",
+  "source": "project3_part2_firebase_tutorial.md",
+  "format": "html",
+  "prefix": "../../",
+  "mainga": "UA-49880327-14",
+  "updated": "2018-11-12T21:30:32-05:00",
+  "id": "firebaseTutorial",
+  "duration": 0,
+  "title": "Firebase Tutorial",
+  "author": "Benjamin Nickerson",
+  "summary": "CS4518 Tutorial: Firebase Storage",
+  "theme": "",
+  "status": [
+    "draft"
+  ],
+  "category": [
+    "common"
+  ],
+  "tags": [],
+  "url": "firebaseTutorial"
+}
